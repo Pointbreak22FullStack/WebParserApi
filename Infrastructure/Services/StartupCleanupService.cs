@@ -36,6 +36,8 @@ namespace Infrastructure.Services
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+            await db.Database.MigrateAsync(ct);
+
             // Сбрасываем зависшие аккаунты
             var stuckAccounts = await db.Accounts
                 .Where(a => a.Status == AccountStatus.InWork)

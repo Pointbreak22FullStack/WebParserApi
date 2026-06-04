@@ -1,5 +1,6 @@
 using Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 
@@ -45,10 +46,16 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// 3. Запуск Seed Data
+// Применяем миграции и сидируем данные
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
+    await db.Database.MigrateAsync();
+}
 await DbInitializer.SeedAsync(app.Services);
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 
 app.UseCors(MyAllowSpecificOrigins);  // Должен быть перед Auth
 // 1. Обязательно для работы OpenIddict и Identity

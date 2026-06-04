@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -13,84 +13,74 @@ public static class DbInitializer
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var appManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        // 1️⃣ Роли
-        string[] roles = { "Admin", "user" };
-        foreach (var role in roles)
+        // Роли
+        foreach (var role in new[] { "Admin", "user" })
         {
             if (!await roleManager.RoleExistsAsync(role))
-            {
                 await roleManager.CreateAsync(new IdentityRole(role));
-            }
         }
 
-        // 2️⃣ Админ
+        // Администратор
         var adminEmail = "admin@admin.com";
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
-        if (adminUser == null)
+        if (await userManager.FindByEmailAsync(adminEmail) == null)
         {
             var admin = new ApplicationUser
             {
                 UserName = adminEmail,
                 Email = adminEmail,
-                EmailConfirmed = true ,
-                 FullName = "Administrator"
+                EmailConfirmed = true,
+                FullName = "Administrator"
             };
-
             var result = await userManager.CreateAsync(admin, "Admin123!");
             if (result.Succeeded)
-            {
                 await userManager.AddToRoleAsync(admin, "Admin");
-            }
         }
 
-        // 3️⃣ OpenIddict Client
-        if (await appManager.FindByClientIdAsync("angular_spa") == null)
+        // OpenIddict Client — пересоздаём при каждом старте чтобы redirect URIs всегда были актуальны
+        var existingApp = await appManager.FindByClientIdAsync("angular_spa");
+        if (existingApp != null)
+            await appManager.DeleteAsync(existingApp);
+
+        var redirectUris = (config["Identity:RedirectUris"] ?? "http://localhost:4200/auth/callback")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(u => new Uri(u))
+            .ToList();
+
+        var postLogoutUris = (config["Identity:PostLogoutRedirectUris"] ?? "http://localhost:4200/login")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(u => new Uri(u))
+            .ToList();
+
+        var descriptor = new OpenIddictApplicationDescriptor
         {
-            var existingApp = await appManager.FindByClientIdAsync("angular_spa");
-            if (existingApp != null)
+            ClientId = "angular_spa",
+            DisplayName = "Angular SPA",
+            ClientType = ClientTypes.Public,
+            Permissions =
             {
-                await appManager.DeleteAsync(existingApp);
+                Permissions.Endpoints.Authorization,
+                Permissions.Endpoints.Token,
+                Permissions.Endpoints.EndSession,
+                Permissions.GrantTypes.AuthorizationCode,
+                Permissions.GrantTypes.Password,
+                Permissions.GrantTypes.RefreshToken,
+                Permissions.ResponseTypes.Code,
+                Permissions.Prefixes.Scope + Scopes.OpenId,
+                Permissions.Prefixes.Scope + Scopes.Profile,
+                Permissions.Prefixes.Scope + Scopes.Email,
+                Permissions.Prefixes.Scope + Scopes.Roles,
+                Permissions.Prefixes.Scope + "resource_api"
             }
+        };
 
-            await appManager.CreateAsync(new OpenIddictApplicationDescriptor
-            {
-                ClientId = "angular_spa",
-                DisplayName = "Angular SPA",
+        foreach (var uri in redirectUris)
+            descriptor.RedirectUris.Add(uri);
 
-                ClientType = ClientTypes.Public,
+        foreach (var uri in postLogoutUris)
+            descriptor.PostLogoutRedirectUris.Add(uri);
 
-                RedirectUris =           
-                {                                                     
-                    new Uri("http://localhost:4200/auth/callback"),
-                    new Uri("https://c469-217-19-214-254.ngrok-free.app/auth/callback") // ✅ добавить
-
-                },
-                Permissions =             
-                {
-                 // endpoints
-                    Permissions.Endpoints.Authorization,
-                    Permissions.Endpoints.Token,
-
-                    // grant types
-                    Permissions.GrantTypes.AuthorizationCode,
-
-                    // PKCE
-                   
-                    Permissions.GrantTypes.Password,
-                    Permissions.GrantTypes.RefreshToken,
-
-                    Permissions.ResponseTypes.Code,  
-                    // scopes
-                    Permissions.Prefixes.Scope + Scopes.OpenId,
-                    Permissions.Prefixes.Scope + Scopes.Profile,
-                    Permissions.Prefixes.Scope + Scopes.Email,
-                    Permissions.Prefixes.Scope + Scopes.Roles,
-                    Permissions.Prefixes.Scope + "resource_api"
-                }
-            });
-        }
+        await appManager.CreateAsync(descriptor);
     }
 }
-

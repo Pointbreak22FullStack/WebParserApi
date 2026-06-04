@@ -74,11 +74,15 @@ namespace Identity
                     options.UseEntityFrameworkCore()  
                     .UseDbContext<AppIdentityDbContext>(); 
                 })                                  
-                .AddServer(options =>            
-                {                     
-                    
-                    options.SetAuthorizationEndpointUris("/identity/connect/authorize");  
-                    options.SetTokenEndpointUris("/identity/connect/token");   
+                .AddServer(options =>
+                {
+                    var issuer = configuration["Identity:Issuer"];
+                    if (!string.IsNullOrWhiteSpace(issuer))
+                        options.SetIssuer(new Uri(issuer));
+
+                    options.SetAuthorizationEndpointUris("/identity/connect/authorize");
+                    options.SetTokenEndpointUris("/identity/connect/token");
+                    options.SetEndSessionEndpointUris("/identity/connect/logout");
                     
                     options.AllowAuthorizationCodeFlow();      // 🔥 вместо password
                     options.RequireProofKeyForCodeExchange();  // PKCE обязателен
@@ -98,10 +102,11 @@ namespace Identity
 
                     options.DisableAccessTokenEncryption(); // 🔥 ВОТ ЭТО
 
-                    options.UseAspNetCore()             
-                    .EnableTokenEndpointPassthrough()      
+                    options.UseAspNetCore()
+                    .EnableTokenEndpointPassthrough()
                     .EnableAuthorizationEndpointPassthrough()
-                    .EnableStatusCodePagesIntegration(); // Помогает корректно пробрасывать 401/404
+                    .EnableStatusCodePagesIntegration()
+                    .DisableTransportSecurityRequirement();
                 })                                 
                 .AddValidation(options =>        
                 {                                   

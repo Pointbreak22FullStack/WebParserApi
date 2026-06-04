@@ -16,7 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = "https://localhost:5001"; // URL вашего Identity проекта
+        options.Authority = builder.Configuration["Authentication:Authority"] ?? "https://localhost:5001/";
+        // In Docker: MetadataAddress points to internal service, Authority is the external issuer
+        var metadataAddress = builder.Configuration["Authentication:MetadataAddress"];
+        if (!string.IsNullOrWhiteSpace(metadataAddress))
+            options.MetadataAddress = metadataAddress;
         options.Audience = "resource_api";
         options.RequireHttpsMetadata = false;
         options.BackchannelHttpHandler = new HttpClientHandler
