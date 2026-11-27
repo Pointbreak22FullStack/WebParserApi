@@ -11,8 +11,9 @@ namespace Infrastructure.Persistence.Repositories
 
         public TaskRepository(ApplicationDbContext context) => _context = context;
 
-        public async Task<IReadOnlyList<UserTask>> GetAllAsync(CancellationToken ct = default)
+        public async Task<IReadOnlyList<UserTask>> GetAllAsync(string? userId = null, CancellationToken ct = default)
             => await _context.UserTasks
+                .Where(t => userId == null || t.UserId == userId)
                 .Include(t => t.TaskAccounts)
                     .ThenInclude(ta => ta.Account)
                 .Include(t => t.Logs)

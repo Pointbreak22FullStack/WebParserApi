@@ -10,8 +10,13 @@ namespace WebApi.Notifications
         private readonly IHubContext<EntityHub> _hub;
         public EntityChangedHandler(IHubContext<EntityHub> hub) => _hub = hub;
 
-        public async Task Handle(EntityChangedNotification notification, CancellationToken ct)
-            => await _hub.Clients.Group(notification.Group)
-                .SendAsync("onEntityChanged", notification, ct);
+        public Task Handle(EntityChangedNotification notification, CancellationToken ct)
+        {
+            var clients = notification.OwnerUserId is { } ownerId
+                ? _hub.Clients.Groups(HubGroups.UserTasks(ownerId), HubGroups.AllTasks)
+                : _hub.Clients.Group(notification.Group);
+
+            return clients.SendAsync("onEntityChanged", notification, ct);
+        }
     }
 }

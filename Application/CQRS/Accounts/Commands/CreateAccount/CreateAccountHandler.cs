@@ -35,7 +35,8 @@ namespace Application.CQRS.Accounts.Commands.CreateAccount
         }
 
         public static AccountDto MapToDto(Account a) => new(
-            a.Id, a.Login, a.Password, a.Description, a.FirstName, a.LastName,
+            // Пароль наружу не отдаём: клиент получает пустую строку
+            a.Id, a.Login, string.Empty, a.Description, a.FirstName, a.LastName,
             a.Status, a.CompletedTasksCount, a.LastUsedAtUtc,
             a.ProxyId, a.Proxy?.IpAddress, a.CreatedAt,
             a.LoginMethod, a.PhoneNumber, a.SessionInfo, a.SessionExpiresAtUtc, a.RiskScore);

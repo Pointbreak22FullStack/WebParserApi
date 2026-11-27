@@ -23,8 +23,11 @@ namespace Application.CQRS.Accounts.Commands.UpdateAccount
             var account = await _repository.GetByIdAsync(request.Id)
                 ?? throw new NotFoundException(nameof(Account), request.Id);
 
+            // Пустой пароль в форме редактирования = оставить текущий
+            var password = string.IsNullOrEmpty(request.Password) ? account.Password : request.Password;
+
             account.UpdateFromForm(
-                request.Login, request.Password, request.Description,
+                request.Login, password, request.Description,
                 request.FirstName, request.LastName,
                 request.LoginMethod, request.PhoneNumber,
                 request.ProxyId);

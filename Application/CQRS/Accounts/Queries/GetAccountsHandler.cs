@@ -16,7 +16,7 @@ namespace Application.CQRS.Accounts.Queries
             return accounts.Select(a => new AccountDto(
                 a.Id,
                 a.Login,
-                a.Password,
+                string.Empty, // пароль наружу не отдаём
                 a.Description,
                 a.FirstName,
                 a.LastName,

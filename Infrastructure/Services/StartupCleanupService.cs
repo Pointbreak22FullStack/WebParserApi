@@ -38,6 +38,8 @@ namespace Infrastructure.Services
 
             await db.Database.MigrateAsync(ct);
 
+            await EncryptLegacyPasswordsAsync(db, ct);
+
             // Сбрасываем зависшие аккаунты
             var stuckAccounts = await db.Accounts
                 .Where(a => a.Status == AccountStatus.InWork)
@@ -65,6 +67,35 @@ namespace Infrastructure.Services
 
             if (allProxyIds.Count > 0)
                 _logger.LogInformation("[Startup] Сброшены Redis-локи для {N} прокси.", allProxyIds.Count);
+        }
+
+        /// <summary>
+        /// Разовая миграция: пароли, сохранённые до включения шифрования, перезаписываются зашифрованными.
+        /// </summary>
+        private async Task EncryptLegacyPasswordsAsync(ApplicationDbContext db, CancellationToken ct)
+        {
+            const string legacyFilter = "\"Password\" <> '' AND \"Password\" NOT LIKE 'enc:v1:%'";
+
+            var accountIds = await db.Database
+                .SqlQueryRaw<int>($"SELECT \"Id\" AS \"Value\" FROM \"Accounts\" WHERE {legacyFilter}")
+                .ToListAsync(ct);
+            var proxyIds = await db.Database
+                .SqlQueryRaw<int>($"SELECT \"Id\" AS \"Value\" FROM \"Proxies\" WHERE {legacyFilter}")
+                .ToListAsync(ct);
+
+            if (accountIds.Count == 0 && proxyIds.Count == 0)
+                return;
+
+            var accounts = await db.Accounts.Where(a => accountIds.Contains(a.Id)).ToListAsync(ct);
+            foreach (var account in accounts)
+                db.Entry(account).Property(a => a.Password).IsModified = true;
+
+            var proxies = await db.Proxies.Where(p => proxyIds.Contains(p.Id)).ToListAsync(ct);
+            foreach (var proxy in proxies)
+                db.Entry(proxy).Property(p => p.Password).IsModified = true;
+
+            await db.SaveChangesAsync(ct);
+            _logger.LogInformation("[Startup] Зашифрованы пароли: аккаунтов {A}, прокси {P}.", accounts.Count, proxies.Count);
         }
 
         public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
