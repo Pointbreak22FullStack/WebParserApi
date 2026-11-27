@@ -1,13 +1,20 @@
 using Application.Common.Interfaces;
 using Domain.Entities;
+using Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.Data
 {
     public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options) { }
+        private readonly SecretProtector _secretProtector;
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, SecretProtector secretProtector)
+            : base(options)
+        {
+            _secretProtector = secretProtector;
+        }
 
         public DbSet<Account> Accounts => Set<Account>();
         public DbSet<Proxy> Proxies => Set<Proxy>();
@@ -20,6 +27,14 @@ namespace Infrastructure.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Пароли аккаунтов и прокси хранятся в БД зашифрованными (AES-256-GCM)
+            var secretConverter = new ValueConverter<string, string>(
+                v => _secretProtector.Protect(v),
+                v => _secretProtector.Unprotect(v));
+
+            modelBuilder.Entity<Account>().Property(a => a.Password).HasConversion(secretConverter);
+            modelBuilder.Entity<Proxy>().Property(p => p.Password).HasConversion(secretConverter);
 
             modelBuilder.Entity<Account>(entity =>
             {

@@ -32,7 +32,7 @@ namespace Application.CQRS.Tasks.Commands
             await _unitOfWork.SaveChangesAsync(ct);
 
             await _publisher.Publish(
-                new EntityChangedNotification("tasks", ChangeType.Created, UserTaskMapper.ToDto(task)), ct);
+                new EntityChangedNotification(HubGroups.Tasks, ChangeType.Created, UserTaskMapper.ToDto(task), task.UserId), ct);
 
             BackgroundJob.Enqueue<ITaskExecutor>(x => x.ExecuteAsync(task.Id, CancellationToken.None));
             return task.Id;

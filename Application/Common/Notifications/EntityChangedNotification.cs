@@ -7,5 +7,7 @@ namespace Application.Common.Notifications
     public record EntityChangedNotification(
         string Group,
         ChangeType ChangeType,
-        object? Payload) : INotification;
+        object? Payload,
+        // Владелец сущности: если задан, уведомление уходит только ему и администраторам
+        string? OwnerUserId = null) : INotification;
 }

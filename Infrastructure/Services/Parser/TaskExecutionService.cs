@@ -69,7 +69,7 @@ namespace Infrastructure.Services.Parser
             if (full == null) return;
 
             await _publisher.Publish(
-                new EntityChangedNotification("tasks", ChangeType.Updated, UserTaskMapper.ToDto(full)), ct);
+                new EntityChangedNotification(HubGroups.Tasks, ChangeType.Updated, UserTaskMapper.ToDto(full), full.UserId), ct);
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Application.CQRS.Proxy.Queries
                 p.IpAddress,
                 p.Port,
                 p.Login,
-                p.Password,
+                string.Empty, // пароль наружу не отдаём
                 p.Type,
                 p.IsActive,
                 p.LatencyMs,

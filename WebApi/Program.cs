@@ -22,11 +22,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         if (!string.IsNullOrWhiteSpace(metadataAddress))
             options.MetadataAddress = metadataAddress;
         options.Audience = "resource_api";
+        // Метаданные Identity внутри docker-сети запрашиваются по http://identity:8080
         options.RequireHttpsMetadata = false;
-        options.BackchannelHttpHandler = new HttpClientHandler
+        // Самоподписанный сертификат Identity допускаем только при локальной разработке
+        if (builder.Environment.IsDevelopment())
         {
-            ServerCertificateCustomValidationCallback = delegate { return true; }
-        };
+            options.BackchannelHttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        }
 
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
@@ -40,14 +45,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            // SignalR (WebSocket/SSE) передаёт токен в query-параметре access_token
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
             OnAuthenticationFailed = context =>
             {
-                // Поставь сюда точку останова (breakpoint)
-                Console.WriteLine("Ошибка аутентификации: " + context.Exception.Message);
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("JwtBearer");
+                logger.LogDebug(context.Exception, "Ошибка аутентификации");
                 return Task.CompletedTask;
             }
         };
     });
+
+// Все эндпоинты требуют авторизации, если явно не указано [AllowAnonymous]
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 // Add services to the container.
 
@@ -70,7 +96,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(MyAllowSpecificOrigins, policy =>
     {
-        policy.WithOrigins("http://localhost:4200") // URL вашего Angular
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                             ?? new[] { "http://localhost:4200" };
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -105,9 +133,9 @@ builder.Services.AddOpenApi(options =>
 
 
 
-        document.Info.Title = "AutoPanel API";
+        document.Info.Title = "WebParser API";
         document.Info.Version = "v1";
-        document.Info.Description = "API для работы с AutoPanel";
+        document.Info.Description = "API для работы с WebParser";
         // 1. Инициализация компонентов
         if (document.Components == null)
         {
@@ -156,8 +184,8 @@ app.UseExceptionHandler(); // Это активирует ваш GlobalException
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(); // <-- 2. Создает UI по адресу /scalar/v1
+    app.MapOpenApi().AllowAnonymous();
+    app.MapScalarApiReference().AllowAnonymous(); // UI по адресу /scalar/v1
 }
 
  app.UseHttpsRedirection();   //          Будет нужно

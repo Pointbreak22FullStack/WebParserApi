@@ -22,14 +22,17 @@ namespace Application.CQRS.Proxy.Commands.UpdateProxy
             var proxy = await _repository.GetByIdAsync(request.Id)
                 ?? throw new NotFoundException(nameof(Domain.Entities.Proxy), request.Id);
 
-            proxy.Update(request.IpAddress, request.Port, request.Login, request.Password,
+            // Пустой пароль в форме редактирования = оставить текущий
+            var password = string.IsNullOrEmpty(request.Password) ? proxy.Password : request.Password;
+
+            proxy.Update(request.IpAddress, request.Port, request.Login, password,
                          request.Type, request.IsActive);
 
             await _repository.UpdateAsync(proxy);
 
             var updated = await _repository.GetByIdWithAccountsAsync(request.Id);
             var dto = new ProxyDto(updated!.Id, updated.IpAddress, updated.Port, updated.Login,
-                                   updated.Password, updated.Type, updated.IsActive, updated.LatencyMs,
+                                   string.Empty, updated.Type, updated.IsActive, updated.LatencyMs,
                                    updated.Accounts.Count, updated.HasError, updated.IsWarming, updated.IsFree);
 
             await _publisher.Publish(

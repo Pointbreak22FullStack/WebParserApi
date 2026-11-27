@@ -4,6 +4,7 @@ using Hangfire;
 using Hangfire.Redis.StackExchange;
 using Infrastructure.Data;
 using Infrastructure.Persistence.Repositories;
+using Infrastructure.Security;
 using Infrastructure.Services.AI;
 using Infrastructure.Services.Captcha;
 using Infrastructure.Services;
@@ -25,6 +26,9 @@ namespace Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<EncryptionOptions>(configuration.GetSection(EncryptionOptions.Section));
+            services.AddSingleton<SecretProtector>();
+
             var connectionString = configuration.GetConnectionString("DefaultConnection");
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString, o =>

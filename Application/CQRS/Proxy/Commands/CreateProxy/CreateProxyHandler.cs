@@ -25,7 +25,7 @@ namespace Application.CQRS.Proxy.Commands.CreateProxy
             await _repository.AddAsync(proxy);
 
             var dto = new ProxyDto(proxy.Id, proxy.IpAddress, proxy.Port, proxy.Login,
-                                   proxy.Password, proxy.Type, proxy.IsActive, proxy.LatencyMs, 0,
+                                   string.Empty, proxy.Type, proxy.IsActive, proxy.LatencyMs, 0,
                                    proxy.HasError, proxy.IsWarming, proxy.IsFree);
 
             await _publisher.Publish(
