@@ -66,6 +66,7 @@ namespace Infrastructure
             services.AddScoped<IBrowserService, PlaywrightBrowserService>();
             services.AddSingleton<BrowserManager>();
             services.AddSingleton<AccountActivator>();
+            services.AddSingleton<ITaskCancellationRegistry, TaskCancellationRegistry>();
             services.AddHostedService<StartupCleanupService>();
 
             services.AddHttpContextAccessor();

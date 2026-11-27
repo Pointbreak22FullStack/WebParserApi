@@ -84,6 +84,14 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
+builder.Services.AddHttpClient(WebApi.Notifications.TelegramTaskNotificationHandler.HttpClientName, client =>
+{
+    client.BaseAddress = new Uri("https://api.telegram.org/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+})
+// Токен бота входит в путь запроса — не пишем URL этого клиента в логи
+.RemoveAllLoggers();
+
 builder.Services.AddSignalR()
     .AddJsonProtocol(options =>
     {

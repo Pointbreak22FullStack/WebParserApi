@@ -1,3 +1,4 @@
+using Application.Common.Exceptions;
 using Application.Common.Models;
 using Domain.Exceptions;
 using FluentValidation;
@@ -19,6 +20,10 @@ namespace WebApi
                 ),
                 DomainException ex => (
                     StatusCodes.Status422UnprocessableEntity,
+                    ex.Message
+                ),
+                NotFoundException ex => (
+                    StatusCodes.Status404NotFound,
                     ex.Message
                 ),
                 _ => (

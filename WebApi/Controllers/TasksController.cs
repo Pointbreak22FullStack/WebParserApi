@@ -1,4 +1,6 @@
 using Application.CQRS.Tasks.Commands;
+using Application.CQRS.Tasks.Commands.CancelTask;
+using Application.CQRS.Tasks.Commands.DeleteTask;
 using Application.CQRS.Tasks.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -22,5 +24,22 @@ namespace WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateTaskCommand command)
             => Ok(await _mediator.Send(command));
+
+        /// <summary>
+        /// Отменить задачу: ожидающая не запустится, выполняющаяся остановится после текущего шага.
+        /// 202 — отмена принята, 404 — задачи нет, 409 — задача уже завершена.
+        /// </summary>
+        [HttpPost("{id:guid}/cancel")]
+        public async Task<IActionResult> Cancel(Guid id)
+            => await _mediator.Send(new CancelTaskCommand(id))
+                ? Accepted()
+                : Conflict("Задача уже завершена.");
+
+        /// <summary>Удалить завершённую задачу. 409 — задача ещё выполняется.</summary>
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
+            => await _mediator.Send(new DeleteTaskCommand(id))
+                ? NoContent()
+                : Conflict("Задача выполняется — сначала отмените её.");
     }
 }
