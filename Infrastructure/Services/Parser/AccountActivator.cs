@@ -181,6 +181,19 @@ namespace Infrastructure.Services.Parser
 
                 _logger.LogInformation("[AccountActivator] Аккаунт {Login} завершил задачу {TaskId}.", account.Login, task.Id);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _logger.LogInformation("[AccountActivator] Задача {TaskId} отменена, аккаунт {Login} остановлен.", task.Id, account.Login);
+                await taskLog.InfoAsync($"Аккаунт '{account.Login}': задача отменена.");
+                taskLog.MarkCompleted();
+
+                account.Status               = AccountStatus.Active;
+                account.CurrentHandlerUserId = null;
+
+                taskAccount.Status          = Domain.Enums.TaskAccountStatus.Error;
+                taskAccount.CompletedAt     = DateTime.UtcNow;
+                taskAccount.DurationSeconds = (int)(DateTime.UtcNow - started).TotalSeconds;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[AccountActivator] Ошибка при работе с аккаунтом {Login}.", account.Login);
