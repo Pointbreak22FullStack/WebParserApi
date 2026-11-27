@@ -1,4 +1,4 @@
-using Application.Common.Interfaces;
+﻿using Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
@@ -36,7 +36,7 @@ namespace Infrastructure.Services.Verification
 
                 // Сбрасываем earlyBuffer при старте новой задачи — коды, накопленные
                 // до регистрации (ретраи форвардера с прошлых сессий), не нужны.
-                // Свежий код придёт после того как браузер запросит SMS у Яндекса.
+                // Свежий код придёт после того как браузер запросит SMS.
                 if (_earlyBuffer.TryRemove(phone, out var dropped))
                 {
                     var age = DateTime.UtcNow - dropped.ReceivedAt;
