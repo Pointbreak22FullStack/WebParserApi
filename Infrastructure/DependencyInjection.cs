@@ -1,4 +1,4 @@
-using Application.Common.Interfaces;
+﻿using Application.Common.Interfaces;
 using Domain.Interfaces;
 using Hangfire;
 using Hangfire.Redis.StackExchange;
@@ -10,7 +10,6 @@ using Infrastructure.Services;
 using Infrastructure.Services.Parser;
 using Infrastructure.Services.Parser.Processors;
 using Infrastructure.Services.Parser.Authorize;
-using Infrastructure.Services.Parser.Authorize.Yandex;
 using Infrastructure.Services.Redis;
 using Infrastructure.Services.Verification;
 using Infrastructure.Services.User;
@@ -83,16 +82,10 @@ namespace Infrastructure
 
             services.AddSingleton<ICodeStore, InMemoryCodeStore>();
 
-            // Login flows (scoped — зависят от scoped PlaywrightCaptchaSolver)
-            services.AddScoped<ILoginFlow, YandexLoginFlow>();
-            services.AddScoped<ILoginFlow, YandexPhoneFlow>();
-            services.AddScoped<ILoginFlow, MailLoginFlow>();
+            // Login flows (scoped). Входы Яндекса и Mail.ru удалены; новые площадки подключаются через официальный OAuth.
             services.AddScoped<LoginFlowFactory>();
 
             services.AddScoped<ITaskProcessor, CommentTaskProcessor>();
-            services.AddScoped<ITaskProcessor, LikeTaskProcessor>();
-            services.AddScoped<ITaskProcessor, DislikeTaskProcessor>();
-            services.AddScoped<ITaskProcessor, ReportTaskProcessor>();
             services.AddScoped<ITaskExecutor, TaskExecutionService>();
 
 
